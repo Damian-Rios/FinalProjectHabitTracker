@@ -44,7 +44,7 @@ The service worker caches assets for offline access and faster load times:
 - Fetch: Uses a cache-first strategy, serving cached files and fetching new ones as needed.
 
 ### Caching Strategy
-Uses a
+Uses a Cache-First approach, loading assets from cache first for speed and offline access, with new files dynamically added to the cache during use.
 
 ### Web app Manifest
 The manifest enables app installation with metadata such as:

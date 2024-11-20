@@ -3,10 +3,17 @@ const CACHE_NAME = "habit-tracker-v1";
 const ASSETS_TO_CACHE = [
     "/",
     "/index.html",
+    "/pages/tracker.html",
+    "/pages/progress.html",
+    "/pages/settings.html",
     "/css/main.css",
     "/css/materialize.min.css",
     "/js/materialize.min.js",
     "/js/ui.js",
+    "/js/firebaseDB.js",
+    "/js/db.js",
+    "/js/main.js",
+    "/js/habitTracker.js",
     "/img/icons/OnSyncIcon-32x32.png",
     "/img/icons/favicon.ico",
     "/manifest.json",
@@ -43,6 +50,12 @@ self.addEventListener('activate', event => {
 // Fetch event
 self.addEventListener('fetch', event => {
     console.log("Service Worker: Fetching...");
+
+    // Only handle GET requests
+    if (event.request.method !== "GET") {
+        return;
+    }
+    
     event.respondWith(
         caches.match(event.request).then(cachedResponse => {
             if(cachedResponse){

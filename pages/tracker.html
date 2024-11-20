@@ -3,43 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tracker</title>
+    <title>Habit Tracker</title>
     <link rel="icon" type="image/x-icon" href="../img/icons/favicon.ico">
     <link rel="stylesheet" href="/css/materialize.min.css">
     <link rel="stylesheet" href="/css/main.css">
     <link rel="manifest" href="../manifest.json">
 
-    <!--Import Google Icon Font-->
+    <!-- Import Google Icon Font -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@700&display=swap" rel="stylesheet">
 </head>
 <body class="grey lighten-4">
     <header>
-        <!-- Nav bar for bigger screens -->
+        <!-- Nav bar for larger screens -->
         <nav class="blue darken-2">
             <div class="nav-wrapper">
                 <a href="#!" class="brand-logo white-text" style="font-size: 2.5rem; font-family: 'Roboto Slab', serif; padding-top: 5px;">
                     <img class="responsive-img" src="../img/icons/OnSyncIcon-32x32.png" alt="OnSync Logo" style="max-width: 40px; height: auto;">
                     OnSync
                 </a>
-
                 <a href="#" data-target="mobile-menu" class="sidenav-trigger">
                     <i class="material-icons">menu</i>
                 </a>
                 <ul class="right hide-on-med-and-down">
                     <li><a href="/index.html" class="waves-effect waves-light"><i class="material-icons">home</i></a></li>
-                    <li><a href="/pages/progress.html" class="waves-effect waves-light"><i class="material-icons">track_changes</i></a></li>
                     <li class="active"><a href="/pages/tracker.html" class="waves-effect waves-light"><i class="material-icons">today</i></a></li>
                     <li><a href="#" class="dropdown-trigger waves-effect waves-light" data-target="notificationsDropdown">
                         <i class="material-icons">notifications</i>
-                        <span class="badge new white-text">3 </span> 
+                        <span class="badge new white-text">3</span> 
                     </a></li>
                     <li><a href="/pages/settings.html" class="waves-effect waves-light"><i class="material-icons">settings</i></a></li>
                 </ul>
             </div>
 
-             <!-- Dropdown Structure -->
-             <ul id="notificationsDropdown" class="dropdown-content">
+            <!-- Dropdown Structure -->
+            <ul id="notificationsDropdown" class="dropdown-content">
                 <li><a href="#!">New 'Meditation' Habit added</a></li>
                 <li><a href="#!">Reminder: Drink Water</a></li>
                 <li><a href="#!">You've reached a daily habit streak!</a></li>
@@ -53,7 +51,6 @@
         <!-- Hamburger menu for medium and small screens -->
         <ul class="sidenav" id="mobile-menu">
             <li><a href="/index.html">Home</a></li>
-            <li><a href="/pages/progress.html">Progress</a></li>
             <li><a href="/pages/tracker.html">Tracker</a></li>
             <li>
                 <a href="#" class="dropdown-trigger" data-target="mobileNotificationsDropdown">
@@ -61,7 +58,7 @@
                     <span class="badge new white-text">3</span>
                 </a>
             </li>
-            <li><a href="/pages/settings.html">settings</a></li>
+            <li><a href="/pages/settings.html">Settings</a></li>
         </ul>
 
         <!-- Dropdown Structure for Mobile -->
@@ -77,60 +74,15 @@
     <main class="container">
         <h4 class="center-align">Habit Tracker</h4>
         
-        <!-- Buttons to navigate weekly calendar -->
-        <div class="navigation center">
-            <button id="prevWeek" class="btn waves-effect blue">Previous Week</button>
-            <button id="nextWeek" class="btn waves-effect blue">Next Week</button>
-            <button id="currentWeek" class="btn waves-effect blue">Current Week</button>
-        </div>
-    
-        <!-- Table to display habit completion for each day of the week -->
-        <div class="card">
-            <div class="card-content">
-                <h4 id="dateRange" class="center-align"></h4>
-                <div class="table-container">
-                    <table class="striped centered highlight">
-                        <thead>
-                            <tr>
-                                <th>Habit</th>
-                                <th>Monday</th>
-                                <th>Tuesday</th>
-                                <th>Wednesday</th>
-                                <th>Thursday</th>
-                                <th>Friday</th>
-                                <th>Saturday</th>
-                                <th>Sunday</th>
-                            </tr>
-                        </thead>
-                        <tbody id="habitTableBody"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Calculates and shows data for current week -->
-        <div class="card">
-            <div class="card-content">
-                <h4>Current Week Data</h4>
-                <p>Total Habits Completed: <span id="totalCompleted">0</span></p>
-                <p>Best Streak: <span id="bestStreak">0</span></p>
-                <p>Best Day(s): <span id="bestDay">None</span></p>
-            </div>
-        </div>
-        
-        <!-- Calculates and shows data for all time -->
-        <div class="card">
-            <div class="card-content">
-                <h4>All-Time Data</h4>
-                <p>Total Habits Completed: <span id="allTimeTotalCompleted">0</span></p>
-                <p>All-Time Best Streak: <span id="allTimeBestStreak">0</span></p>
-                <p>Best Day(s) Overall: <span id="allTimeBestDay">None</span></p>
-            </div>
-        </div>              
+        <div>
+            <h4>Logs</h4>
+            <ul class="logs collection">
+
+            </ul>
+        </div>      
     </main>    
 
     <script src="/js/materialize.min.js"></script>
-    <script src="/js/ui.js"></script>
-    <script src="/js/habitTracker.js"></script>
+    <script type="module" src="../js/ui.js"></script>
 </body>
 </html>

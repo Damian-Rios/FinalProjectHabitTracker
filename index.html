@@ -24,8 +24,6 @@
                     <i class="material-icons">menu</i>
                 </a>
                 <ul class="right hide-on-med-and-down">
-                    <li><a href="/pages/habits.html" class="waves-effect waves-light"><i class="material-icons">spa</i></a></li>
-                    <li><a href="/pages/progress.html" class="waves-effect waves-light"><i class="material-icons">track_changes</i></a></li>
                     <li><a href="/pages/tracker.html" class="waves-effect waves-light"><i class="material-icons">today</i></a></li>
                     <li><a href="#" class="dropdown-trigger waves-effect waves-light" data-target="notificationsDropdown">
                         <i class="material-icons">notifications</i>
@@ -49,8 +47,7 @@
     <aside>
         <!-- Sidebar menu for mobile devices -->
         <ul class="sidenav" id="mobile-menu">
-            <li><a href="/pages/habits.html">Habits</a></li>
-            <li><a href="/pages/progress.html">Progress</a></li>
+            <li><a href="/index.html">Home</a></li>
             <li><a href="/pages/tracker.html">Tracker</a></li>
             <li>
                 <a href="#" class="dropdown-trigger" data-target="mobileNotificationsDropdown">
@@ -72,63 +69,50 @@
     </aside>
 
     <main class="container">
-        <h4 class="center-align">Active Habits</h4>
+        <h4 class="center-align">Habits</h4>
 
         <!-- List of active habits -->
-        <ul class="collection with-header">
-            <li class="collection-header"><h5>Your Active Habits</h5></li>
-            <li class="collection-item" id="exerciseHabit">
-                Exercise
-                <span class="secondary-content">
-                    <!-- Log activity button -->
-                    <a href="#!" class="log-activity" data-habit="Exercise">
-                        <i class="material-icons">edit</i>
-                    </a>
-                </span>
-            </li>
-            <li class="collection-item" id="readHabit">
-                Read
-                <span class="secondary-content">
-                    <a href="#!" class="log-activity" data-habit="Read">
-                        <i class="material-icons">edit</i>
-                    </a>
-                </span>
-            </li>
-            <li class="collection-item" id="meditateHabit">
-                Meditate
-                <span class="secondary-content">
-                    <a href="#!" class="log-activity" data-habit="Meditate">
-                        <i class="material-icons">edit</i>
-                    </a>
-                </span>
-            </li>
-            <!-- More habits can be added here -->
+        <ul class="habits collection with-header">
+            <!-- Dynamic habit items will be injected here -->
         </ul>
-    </main>
 
-    <!-- Modal for logging activity -->
-    <div id="logActivityModal" class="modal">
-        <div class="modal-content">
-            <h4>Log Activity</h4>
-            <p id="activityHabitName"></p>
-            <!-- Input fields for activity duration and notes -->
-            <div class="input-field">
-                <input id="activity_duration" type="number" min="1">
-                <label for="activity_duration">Duration (in minutes)</label>
+        <!-- Add Habit Button -->
+        <div class="center">
+            <button
+                class="btn-floating blue darken-2 modal-trigger"
+                data-target="habitModal"
+                aria-label="Add new habit"
+            >
+                <i class="material-icons">add</i>
+            </button>
+        </div>
+
+        <!-- Add Habit Modal -->
+        <div id="habitModal" class="modal">
+            <div class="modal-content">
+                <h4>Add a Custom Habit</h4>
+                <form id="customHabitForm">
+                    <div class="input-field">
+                        <label for="custom_habit">Custom Habit Name</label>
+                        <input id="custom_habit" type="text" class="validate" required>
+                    </div>
+                    <div class="input-field">
+                        <label for="custom_description">Description</label>
+                        <input id="custom_description" type="text" class="validate" required>
+                    </div>
+                    <div class="input-field">
+                        <button class="modal-close btn waves-effect waves-light" type="button">Add Custom Habit</button>
+                    </div>
+                </form>
             </div>
-            <div class="input-field">
-                <input id="activity_notes" type="text">
-                <label for="activity_notes">Notes (optional)</label>
+            <div class="modal-footer">
+                <a href="#!" class="modal-close waves-effect waves-green btn-flat">Close</a>
             </div>
         </div>
-        <div class="modal-footer">
-            <a href="#!" class="modal-close waves-effect waves-green btn-flat" id="logActivity">Log Activity</a>
-            <a href="#!" class="modal-close waves-effect waves-red btn-flat">Cancel</a>
-        </div>
-    </div>    
+    </main> 
 
     <script src="/js/materialize.min.js"></script>
-    <script src="/js/ui.js"></script>
-    <script src="/js/main.js"></script>
+    <script type="module" src="/js/ui.js"></script>
+    <script type="module" src="/js/firebaseDB.js"></script>
 </body>
 </html>
