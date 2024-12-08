@@ -1,4 +1,4 @@
-import { openDB } from "https://unpkg.com/idb?module";
+import { openDB } from 'https://cdn.jsdelivr.net/npm/idb@8/+esm';
 import { addHabitToFirebase, deleteHabitFromFirebase, getHabitsFromFirebase } from "./firebaseDB.js";
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -21,16 +21,8 @@ document.addEventListener('DOMContentLoaded', function() {
     var selectElems = document.querySelectorAll('select');
     M.FormSelect.init(selectElems);
 
-    // Load user habits
-    loadHabits();
-
-    // Load habit logs
-    loadLogs();
-    syncHabits();
-
     // Check storage usage
     checkStorageUsage();
-
     // Request persistent storage
     requestPersistentStorage();
 });
@@ -118,7 +110,7 @@ async function addHabit(habit) {
 }
 
 // Sync habits from indexDB to firebase
-async function syncHabits() {
+export async function syncHabits() {
     const db = await createDB();
     const tx = db.transaction("habits", "readonly");
     const store = tx.objectStore("habits");
@@ -190,7 +182,7 @@ async function deleteHabit(id) {
 }
 
 // Load Habits with Transaction
-async function loadHabits() {
+export async function loadHabits() {
     const db = await createDB();
 
     const habitContainer = document.querySelector(".habits");
@@ -412,7 +404,7 @@ async function deleteLog(id) {
 }
 
 // Load Logs with Transaction
-async function loadLogs() {
+export async function loadLogs() {
     const db = await createDB();
 
     // Start a transaction (read-only)

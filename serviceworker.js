@@ -1,4 +1,4 @@
-const CACHE_NAME = "habit-tracker-v1";
+const CACHE_NAME = "habit-tracker-v6";
 
 const ASSETS_TO_CACHE = [
     "/",
@@ -6,11 +6,15 @@ const ASSETS_TO_CACHE = [
     "/pages/tracker.html",
     "/pages/progress.html",
     "/pages/settings.html",
+    "/pages/auth.html",
     "/css/main.css",
     "/css/materialize.min.css",
     "/js/materialize.min.js",
     "/js/ui.js",
     "/js/firebaseDB.js",
+    "/js/auth.js",
+    "/js/signIn.js",
+    "/js/firebaseConfig.js",
     "/js/db.js",
     "/js/main.js",
     "/js/habitTracker.js",
@@ -55,7 +59,7 @@ self.addEventListener('fetch', event => {
     if (event.request.method !== "GET") {
         return;
     }
-    
+
     event.respondWith(
         caches.match(event.request).then(cachedResponse => {
             if(cachedResponse){

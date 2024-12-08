@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Habit Tracker</title>
+    <!-- Import Materialize CSS -->
+    <link rel="stylesheet" href="/css/materialize.min.css">
+    <link rel="stylesheet" href="/css/main.css">
+  </head>
+  <body>
+    <div class="container">
+      <!-- Sign In Form -->
+      <div id="sign-in-form" class="row">
+        <h4>Sign In</h4>
+        <div class="input-field col s12">
+          <input id="sign-in-email" type="email" class="validate" />
+          <label for="sign-in-email">Email</label>
+        </div>
+        <div class="input-field col s12">
+          <input id="sign-in-password" type="password" class="validate" />
+          <label for="sign-in-password">Password</label>
+        </div>
+        <button id="sign-in-btn" class="btn waves-effect waves-light">
+          Sign In
+        </button>
+        <p>Don't have an account? <a href="#" id="show-signup">Sign Up</a></p>
+      </div>
+
+      <!-- Sign Up Form -->
+      <div id="sign-up-form" class="row" style="display: none">
+        <h4>Sign Up</h4>
+        <div class="input-field col s12">
+          <input id="sign-up-email" type="email" class="validate" />
+          <label for="sign-up-email">Email</label>
+        </div>
+        <div class="input-field col s12">
+          <input id="sign-up-password" type="password" class="validate" />
+          <label for="sign-up-password">Password</label>
+        </div>
+        <button id="sign-up-btn" class="btn waves-effect waves-light">
+          Sign Up
+        </button>
+        <p>Already have an account? <a href="#" id="show-signin">Sign In</a></p>
+      </div>
+    </div>
+
+    <script src="/js/materialize.min.js"></script>
+    <!-- Import Firebase and Materialize JS -->
+    <script type="module" src="/js/signIn.js"></script>
+  </body>
+</html>

@@ -1,37 +1,33 @@
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+import { currentUser } from "./auth.js";
+import { db } from "./firebaseConfig.js";
 import { 
-    getFirestore,
     collection,
     doc,
+    setDoc,
     addDoc,
     getDocs,
     deleteDoc,
     updateDoc,
 } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-    apiKey: "AIzaSyClMhadRcgH-IGmhwcZxCPghxjOVb5OLGY",
-    authDomain: "habittracker-45e1d.firebaseapp.com",
-    projectId: "habittracker-45e1d",
-    storageBucket: "habittracker-45e1d.firebasestorage.app",
-    messagingSenderId: "154351030805",
-    appId: "1:154351030805:web:2413a81fe953f48844341c",
-    measurementId: "G-WYRJ14THMK"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
 
 // Add a habit
 export async function addHabitToFirebase(habit) {
     try {
-        const docRef = await addDoc(collection(db, "habits"), habit);
+        if(!currentUser){
+            throw new Error("User is not authenticated");
+        }
+        const userId = currentUser.uid;
+        console.log("userID: ", userId);
+        const userRef = doc(db, "users", userId);
+        await setDoc(
+            userRef, 
+            { 
+                email: currentUser.email,
+            }, 
+            { merge: true }
+        );
+        const habitsRef = collection(userRef, "habits");
+        const docRef = await addDoc(habitsRef, habit);
         return {id: docRef.id, ...habit};
     } catch(error) {
         console.error("error adding habit: ", error);
@@ -42,9 +38,14 @@ export async function addHabitToFirebase(habit) {
 export async function getHabitsFromFirebase() {
     const habits = [];
     try {
-        const querySnapshot = await getDocs(collection(db, "habits"));
+        if (!currentUser){
+            throw new Error("User is not authenticated");
+        }
+        const userId = currentUser.uid;
+        const habitRef = collection(doc(db, "users", userId), "habits");
+        const querySnapshot = await getDocs(habitRef);
         querySnapshot.forEach((doc) => {
-            habits.push({id: doc.id, ...doc.data()});
+            habits.push({ id: doc.id, ...doc.data() });
         });
     } catch(error){
         console.error("error retrieving habits: ", error);
@@ -55,7 +56,11 @@ export async function getHabitsFromFirebase() {
 // Delete habits
 export async function deleteHabitFromFirebase(id){
     try {
-        await deleteDoc(doc(db, "habits", id));
+        if (!currentUser){
+            throw new Error("User is not authenticated");
+        }
+        const userId = currentUser.uid;
+        await deleteDoc(doc(db, "users", userId, "habits", id));
     } catch (error) {
         console.error("error deleting habit: ", error);
     }
@@ -63,7 +68,11 @@ export async function deleteHabitFromFirebase(id){
 // Update Habits
 export async function updateHabitInFirebase(id, updatedHabit) {
     try {
-        const habitRef = doc(db, "habits", id);
+        if (!currentUser){
+            throw new Error("User is not authenticated");
+        }
+        const userId = currentUser.uid;
+        const habitRef = doc(db, "users", userId, "habits", id);
         await updateDoc(habitRef, updatedHabit);
     } catch (error) {
         console.error("error updating habit: ", error);
