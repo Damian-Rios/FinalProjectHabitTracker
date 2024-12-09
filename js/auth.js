@@ -4,7 +4,7 @@ import {
     onAuthStateChanged,
     signOut,
 } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
-import { loadHabits, loadLogs, syncHabits } from "./ui.js";
+import { loadHabits, syncHabits } from "./ui.js";
 
 export let currentUser = null;
 
@@ -24,7 +24,6 @@ document.addEventListener("DOMContentLoaded", ()=>{
             }
             loadHabits();
             syncHabits();
-            loadLogs();
         } else {
             // No user is signed in.
             console.log("No user is currently signed in");

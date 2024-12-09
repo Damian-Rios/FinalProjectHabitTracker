@@ -1,95 +1,127 @@
 import { openDB } from 'https://cdn.jsdelivr.net/npm/idb@8/+esm';
-import { addHabitToFirebase, deleteHabitFromFirebase, getHabitsFromFirebase } from "./firebaseDB.js";
+import { 
+    addHabitToFirebase,
+    deleteHabitFromFirebase,
+    getHabitsFromFirebase,
+    updateHabitInFirebase,
+} from "./firebaseDB.js";
 
+import { messaging, getToken, } from './firebaseConfig.js';
+import { onMessage } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-messaging.js';
+import { currentUser } from './auth.js';
+
+// --- Constants ---
+const STORAGE_THRESHOLD = 0.8;
+let serviceWorkerRegistration = null;
+
+// --- Event Listeners ---
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize sidenav for mobile view
-    var sidenavElems = document.querySelectorAll('.sidenav');
-    M.Sidenav.init(sidenavElems);
-
-    // Initialize dropdowns
-    var dropdownElems = document.querySelectorAll('.dropdown-trigger');
-    M.Dropdown.init(dropdownElems, {
-        constrainWidth: false,
-        coverTrigger: false
-    });
-
-    // Initialize modals
-    const modals = document.querySelectorAll('.modal');
-    M.Modal.init(modals);
-
-    // Initialize select elements
-    var selectElems = document.querySelectorAll('select');
-    M.FormSelect.init(selectElems);
-
-    // Check storage usage
+    initializeMaterializeComponents();
     checkStorageUsage();
-    // Request persistent storage
     requestPersistentStorage();
+
+    // Add event listener for the Enable Notifications button
+    const notificationButton = document.getElementById("enable-notifications-btn");
+
+    // Register service worker
+    if ("serviceWorker" in navigator) {
+        navigator.serviceWorker
+            .register('/serviceworker.js')
+            .then((registration) => {
+                serviceWorkerRegistration = registration;
+                console.log("Service Worker Registered!", registration);
+            })
+            .catch((err) => console.log("Service Worker Registration failed", err));
+    }
 });
 
-// Register service worker
-if ("serviceWorker" in navigator) {
-    navigator.serviceWorker
-        .register('/serviceworker.js')
-        .then((req) => console.log("Service Worker Registered!", req))
-        .catch((err) => console.log("Service Worker Registration failed", err));
+// --- Functions ---
+// Initialize Materialize components
+function initializeMaterializeComponents() {
+    M.Sidenav.init(document.querySelectorAll('.sidenav'));
+    M.Dropdown.init(document.querySelectorAll('.dropdown-trigger'), {
+        constrainWidth: false,
+        coverTrigger: false,
+    });
+    M.Modal.init(document.querySelectorAll('.modal'));
+    M.FormSelect.init(document.querySelectorAll('select'));
 }
 
+// --- Database Operations ---
 
 // Initialize and create the database
-async function createDB() {
-    const db = await openDB("habitTracker", 1, {
-        upgrade(db, oldVersion, newVersion, transaction) {
-            console.log(`Upgrading DB from version ${oldVersion} to ${newVersion}`);
-
-            // Check if "habits" store exists before creating it
-            if (!db.objectStoreNames.contains("habits")) {
-                const habitStore = db.createObjectStore("habits", {
-                    keyPath: "id",
-                    autoIncrement: true
-                });
-                habitStore.createIndex("title", "title", {unique: false});
-                habitStore.createIndex("description", "description", {unique: false});
-            }
-
-            // Check if "logs" store exists before creating it
-            if (!db.objectStoreNames.contains("logs")) {
-                const logsStore = db.createObjectStore("logs", {
-                    keyPath: "id",
-                    autoIncrement: true
-                });
-                logsStore.createIndex("habitId", "habitId", {unique: false});
-                logsStore.createIndex("description", "description", { unique: false});
-                logsStore.createIndex("timestamp", "timestamp", { unique: false});
-            }
-        }
+let dbPromise;
+async function getDB() {
+  if (!dbPromise) {
+    dbPromise = openDB("habitTracker", 1, {
+      upgrade(db) {
+        const store = db.createObjectStore("habits", {
+          keyPath: "id",
+          autoIncrement: true,
+        });
+        store.createIndex("synced", "synced");
+      },
     });
-    return db;
+  }
+  return dbPromise;
 }
 
+// Sync un-synced habits from IndexedDB to Firebase
+export async function syncHabits() {
+    const db = await getDB();
+    const tx = db.transaction("habits", "readwrite");
+    const store = tx.objectStore("habits");
+    const habits = await store.getAll();
+    await tx.done;
+  
+    for (const habit of habits) {
+      if (!habit.synced && isOnline()) {
+        try {
+          const habitToSync = {
+            title: habit.title,
+            description: habit.description,
+          };
+          const savedHabit = await addHabitToFirebase(habitToSync);
+          const txUpdate = db.transaction("habits", "readwrite");
+          const storeUpdate = txUpdate.objectStore("habits");
+          await storeUpdate.delete(habit.id);
+          await storeUpdate.put({ ...habit, id: savedHabit.id, synced: true });
+          await txUpdate.done;
+        } catch (error) {
+          console.error("Error syncing habit:", error);
+        }
+      }
+    }
+  }
 
-// Add a new habit to the database
+// Check if the app is online
+function isOnline() {
+    return navigator.onLine;
+}
+
+// --- Habit Management Functions ---
+// Add a new habit to either Firebase or IndexedDB
 async function addHabit(habit) {
-    const db = await createDB();
+    const db = await getDB();
     let habitId;
 
-    if(navigator.onLine) {
-        const saveHabit = await addHabitToFirebase(habit);
-        habitId = saveHabit.id;
+    if(isOnline()) {
+        try{
+            const saveHabit = await addHabitToFirebase(habit);
+            habitId = saveHabit.id;
 
-        const tx = db.transaction("habits", "readwrite");
-        const store = tx.objectStore("habits");
+            const tx = db.transaction("habits", "readwrite");
+            const store = tx.objectStore("habits");
 
-        await store.put({ ...habit, id: habitId, synced: true });
-        await tx.done;
+            await store.put({ ...habit, id: habitId, synced: true });
+            await tx.done;
+        } catch (error) {
+            console.error("Error adding habit to Firebase: ", error);
+        }
     } else {
         habitId = `temp-${Date.now()}`;
 
-        const habitToStore = { ...habit, habitId, synced: false };
-        if(!habitToStore.id){
-            console.error("Failed to generate a valid ID for the habit.");
-            return // Exit if ID is invalid
-        }
+        const habitToStore = { ...habit, id: habitId, synced: false };
 
         // Start a transaction
         const tx = db.transaction("habits", "readwrite");
@@ -109,58 +141,63 @@ async function addHabit(habit) {
     return { ...habit, id: habitId };
 }
 
-// Sync habits from indexDB to firebase
-export async function syncHabits() {
-    const db = await createDB();
-    const tx = db.transaction("habits", "readonly");
-    const store = tx.objectStore("habits");
+// Edit habit with Transaction
+async function editHabit(id, updatedData) {
+    if (!id) {
+        console.log("Invalid Id passed to editHabit");
+        return;
+    }
 
-    // Fetch all unsynced habits
-    const habits = await store.getAll();
-    await tx.done;
-    
-    for (const habit of habits) {
-        if (!habit.synced && navigator.onLine) {
-            try {
-                const habitToSync = {
-                    title: habit.title,
-                    description: habit.description,
-                };
+    const db = await getDB();
 
-                // Send the habit to firebase
-                const savedHabit = await addHabitToFirebase(habitToSync);
+    if (isOnline()) {
+        try {
+            await updateHabitInFirebase(id, updatedData);
+            //Update in IndexedDB as well
+            const tx = db.transaction("habits", "readwrite");
+            const store = tx.objectStore("habits");
+            await store.put({...updatedData, id: id, synced: true });
+            await tx.done;
 
-                // Replace temporary ID to firebase id
-                const txUpdate = db.transaction("habits", "readwrite");
-                const storeUpdate = txUpdate.objectStore("habits");
-
-                await storeUpdate.delete(habit.id);
-                await storeUpdate.put({ ...habit, id: savedHabit.id, synced: true});
-                await txUpdate.done;
-            } catch (error) {
-                console.error("Error syncing habit: ", error);
-            }
+            // Reload the entire habit list to reflect the updates
+            loadHabits();
+        } catch (error) {
+            console.error("Error updating habit in Firebase: ", error);
         }
+    } else {
+        // If offline, make an IndexedDB transaction
+        const tx = db.transaction("habits", "readwrite");
+        const store = tx.objectStore("habits");
+        await store.put({...updatedData, id: id, synced: false});
+        await tx.done;
+        loadHabits();
     }
 }
 
+
 // Delete a habit with Transaction
 async function deleteHabit(id) {
+    console.log("Attempting to delete habit...")
     if (!id) {
         console.error("Invalid Id passed to deleteHabit");
         return;
     }
 
-    const db = await createDB();
-
-    if(navigator.onLine) {
-        await deleteHabitFromFirebase(id);
+    const db = await getDB();
+    if (isOnline()) {
+        try{
+            console.log("asdfasdf");
+            await deleteHabitFromFirebase(id);
+        } catch (error) {
+            console.error("Error deleting habit from Firebase: ", error);
+        }
+    } else {
+        console.log("not online")
     }
 
     // Start a transaction
     const tx = db.transaction("habits", "readwrite");
     const store = tx.objectStore("habits");
-
     try {
         // Delete habit by id
         await store.delete(id);
@@ -172,23 +209,24 @@ async function deleteHabit(id) {
     await tx.done;
 
     // Remove habit from UI
-    const habitCollection = document.querySelector(`[data-id="${id}"]`);
-    if (habitCollection) {
-        habitCollection.remove();
+    const habitCard = document.querySelector(`[data-id="${id}"]`);
+    if (habitCard) {
+        habitCard.remove();
     }
 
     // Update storage usage
     checkStorageUsage();
 }
 
-// Load Habits with Transaction
-export async function loadHabits() {
-    const db = await createDB();
+// --- UI Functions ---
 
+// Load Habits and sync with Firebase if online
+export async function loadHabits() {
+    const db = await getDB();
     const habitContainer = document.querySelector(".habits");
     habitContainer.innerHTML = ""; // Clear current habits
 
-    if (navigator.onLine) {
+    if (isOnline()) {
         const firebaseHabits = await getHabitsFromFirebase();
 
         // Start a transaction (read-only)
@@ -219,20 +257,23 @@ export async function loadHabits() {
 
 // Display Habit using the existing HTML Structure
 function displayHabit(habit) {
+    const habitContainer = document.querySelector(".habits");
 
-    if (document.querySelector(`[data-id="${habit.id}"]`)) {
-        return;
+    // Check if the habit already exists in the UI and remove it
+    const existingHabit = habitContainer.querySelector(`[data-id="${habit.id}"]`);
+    if (existingHabit) {
+        existingHabit.remove();
     }
 
-    const habitContainer = document.querySelector(".habits");
+    // Create new habit HTML and add it to the container
     const html = `
         <li class="collection-item" data-id="${habit.id}">
             <span>${habit.title}</span>
             <span class="secondary-content">
-                <button class="modal-trigger btn-flat" data-target="habitInfo${habit.id}">
+                <button class="modal-trigger btn-flat info-btn" data-target="habitInfo${habit.id}">
                     <i class="material-icons">info</i>
                 </button>
-                <button class="modal-trigger btn-flat" data-target="logHabit${habit.id}">
+                <button class="habit-edit btn-flat" data-target="habitModal" aria-label="Edit habit">
                     <i class="material-icons">edit</i>
                 </button>
                 <button class="habit-delete btn-flat" aria-label="Delete habit">
@@ -251,27 +292,6 @@ function displayHabit(habit) {
                 <button class="modal-close btn-flat">Close</button>
             </div>
         </div>
-
-        <!-- Log Modal -->
-        <div id="logHabit${habit.id}" class="modal">
-            <div class="modal-content">
-                <h4>Log Activity for ${habit.title}</h4>
-                <form id="logForm${habit.id}">
-                    <div class="input-field">
-                        <input type="date" id="logDate${habit.id}" required>
-                        <label for="logDate${habit.id}">Date</label>
-                    </div>
-                    <div class="input-field">
-                        <input type="text" id="logDescription${habit.id}" required>
-                        <label for="logDescription${habit.id}">Description</label>
-                    </div>
-                    <button type="submit" class="btn">Save Log</button>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button class="modal-close btn-flat">Close</button>
-            </div>
-        </div>
     `;
     habitContainer.insertAdjacentHTML("beforeend", html);
 
@@ -281,223 +301,102 @@ function displayHabit(habit) {
     );
     deleteButton.addEventListener("click", () => deleteHabit(habit.id));
 
-    // Attach log form submission event listener
-    const logForm = document.querySelector(`#logForm${habit.id}`);
-    logForm.addEventListener("submit", async (event) => {
-        event.preventDefault();
-
-        // Get the form data
-        const logDate = document.querySelector(`#logDate${habit.id}`).value;
-        const logDescription = document.querySelector(`#logDescription${habit.id}`).value;
-
-        // Create a new log object
-        const log = {
-            habitId: habit.id,
-            description: logDescription,
-            timestamp: logDate
-        };
-
-        // Add log to the database
-        await addLog(log);
-
-        displayLog(log);
-
-        // Clear the form
-        logForm.reset();
+    // Attach edit event listener
+    const editButton = habitContainer.querySelector(
+        `[data-id="${habit.id}"] .habit-edit`
+    );
+    editButton.addEventListener("click", () => {
+        openEditForm(habit.id, habit.title, habit.description)
     });
 
-    // Initialize modal for the info button
+    // Attach info button event listener
     const modalElement = document.getElementById(`habitInfo${habit.id}`);
     M.Modal.init(modalElement);
-
-    // Initialize the modal for the log button
-    const logModal = document.getElementById(`logHabit${habit.id}`);
-    M.Modal.init(logModal);
-
 }
 
-// Add Habit Button Listener
-const addHabitButton = document.querySelector(".btn");
-addHabitButton.addEventListener("click", async () => {
-    const titleInput = document.querySelector("#custom_habit");
-    const descriptionInput = document.querySelector("#custom_description");
+// Edit Habit Button Listener
+document.addEventListener("DOMContentLoaded", () => {
+    const addHabitButton = document.querySelector("#form-action-btn");
 
-    if (!titleInput.value.trim()) {
-        alert("Please provide a valid title.");
-        return;
+    if (addHabitButton) {
+        addHabitButton.addEventListener("click", async () => {
+
+            // Collect input values
+            const titleInput = document.querySelector("#title");
+            const descriptionInput = document.querySelector("#description");
+            const habitIdInput = document.querySelector("#habit-id");
+            const formActionButton = document.querySelector("#form-action-btn");
+
+            // Validate required fields
+            if (!titleInput.value.trim()) {
+                M.toast({html: "Title is required!", classes: "red lighten-1"});
+                return;
+            }
+
+            // Prepare habit data
+            const habitId = habitIdInput.value;
+            const habitData = {
+                title: titleInput.value,
+                description: descriptionInput.value,
+            };
+
+            try {
+                if (habitId) {
+                    console.log(`Editing Habit ID ${habitId}`);
+                    // If habitId exists, update the habit
+                    await editHabit(habitId, habitData);
+                    M.toast({html: "Habit updated successfully!", classes: "green lighten-1"});
+                    loadHabits();
+                } else {
+                    // Otherwise, add a new habit
+                    const savedHabit = await addHabit(habitData);
+                    M.toast({html: "Habit add successfully!", class: "green lighten-1"});
+                    displayHabit(savedHabit);
+                }
+
+                formActionButton.textContent = "Add";
+                closeForm();
+            } catch (error) {
+                console.error("Error saving habit: ", error);
+                M.toast({html: "Failed to save habit. Try again.", classes: "red lighten-1"});
+            }
+        });
+    } else {
+        console.error("Form action button not found.");
     }
-
-    const habit = {
-        title: titleInput.value,
-        description: descriptionInput.value,
-    };
-
-    // Add habit to IndexedDB
-    const savedHabit = await addHabit(habit);
-
-    // Add habit to the UI
-    displayHabit(savedHabit);
-
-    // Clear input fields after adding
-    titleInput.value = "";
-    descriptionInput.value = "";
 });
 
-// Add a new log
-async function addLog(log) {
-    const db = await createDB();
+// Open Edit Form with existing habit data
+function openEditForm(id, title, description) {
+    const titleInput = document.querySelector("#title");
+    const descriptionInput = document.querySelector("#description");
+    const habitIdInput = document.querySelector("#habit-id");
+    const formActionButton = document.querySelector("#form-action-btn");
 
-    // Start a transaction
-    const tx = db.transaction("logs", "readwrite");
-    const store = tx.objectStore("logs");
+    // Fill in the form with existing habit data
+    titleInput.value = title;
+    descriptionInput.value = description;
+    habitIdInput.value = id;
+    formActionButton.textContent = "Edit";
 
-    // Add log to store
-    await store.add(log);
+    M.updateTextFields();
 
-    // Complete transaction
-    await tx.done;
-
-    // Update storage usage
-    checkStorageUsage();
+    const forms = document.querySelector("#habitModal");
+    const instance = M.Modal.getInstance(forms);
+    instance.open();
 }
 
-// Update a log
-async function updateLog(id, updatedDetails) {
-    const db = await createDB();
-
-    const tx = db.transaction("logs", "readwrite");
-    const store = tx.objectStore("logs");
-
-    // Get the existing log
-    const log = await store.get(id);
-
-    // Merge updates and save back
-    const updatedLog = { ...log, ...updatedDetails };
-    await store.put(updatedLog);
-
-    await tx.done;
-    console.log(`Log updated:`, updatedLog);
-}
-
-// Delete a log
-async function deleteLog(id) {
-    const db = await createDB();
-
-    // Start a transaction
-    const tx = db.transaction("logs", "readwrite");
-    const store = tx.objectStore("logs");
-
-    // Delete log by id
-    await store.delete(id);
-    
-    // Complete Transaction
-    await tx.done;
-
-     // Remove log from UI
-    const logCard = document.querySelector(`[data-id="${id}"]`);
-    if (logCard) {
-        logCard.remove();
-    }
-
-    // Update storage usage
-    checkStorageUsage();
-}
-
-// Load Logs with Transaction
-export async function loadLogs() {
-    const db = await createDB();
-
-    // Start a transaction (read-only)
-    const tx = db.transaction("logs", "readonly");
-    const store = tx.objectStore("logs");
-
-    // Get all logs
-    const logs = await store.getAll();
-
-    // Complete transaction
-    await tx.done;
-
-    const logContainer = document.querySelector(".logs");
-    logContainer.innerHTML = ""; // Clear current logs
-
-    logs.forEach((log) => {
-        displayLog(log);
-    });
-}
-
-// Fetch the log by its ID, then get the habitId and fetch the habit name
-async function getHabitNameFromLog(logId) {
-    const db = await createDB();
-    
-    // First, get the log by its ID
-    const tx = db.transaction("logs", "readonly");
-    const store = tx.objectStore("logs");
-    const log = await store.get(logId);  // Fetch the log by its ID
-    
-    await tx.done;
-    
-    if (log) {
-        const habitId = log.habitId;  // Extract habitId from the log
-        
-        // Now fetch the habit name using the habitId
-        return getHabitName(habitId);  // This will look up the habit name
-    } else {
-        console.warn("Log not found for ID:", logId);
-        return "Unknown Habit";  // Fallback in case log is not found
-    }
-}
-
-// Fetch habit name by habitId
-async function getHabitName(habitId) {
-    if (!habitId) {
-        console.error("Invalid habitId:", habitId);
-        return "Unknown Habit";  // Fallback to "Unknown Habit"
-    }
-
-    try {
-        const db = await createDB();
-        const tx = db.transaction("habits", "readonly");
-        const store = tx.objectStore("habits");
-        
-        // Fetch the habit by its habitId
-        const habit = await store.get(habitId);
-        await tx.done;
-
-        if (habit) {
-            return habit.title;  // Return the habit's name
-        } else {
-            console.warn("Habit not found for ID:", habitId);
-            return "Unknown Habit";  // Fallback if habit doesn't exist
-        }
-    } catch (error) {
-        console.error("Error fetching habit name:", error);
-        return "Unknown Habit";  // Fallback to "Unknown Habit"
-    }
-}
-
-// Display the log with habit name
-async function displayLog(log) {
-    const logContainer = document.querySelector(".logs");
-
-    // Fetch the habit name by log.id
-    const habitName = await getHabitNameFromLog(log.id);
-
-    const html = `
-        <li class="collection-item" data-id="${log.id}">
-            <span><strong>Habit:</strong> ${habitName}</span><br>
-            <span><strong>Description:</strong> ${log.description}</span><br>
-            <span><strong>Timestamp:</strong> ${log.timestamp}</span>
-            <button class="log-delete btn-flat secondary-content" aria-label="Delete log">
-                <i class="material-icons">delete</i>
-            </button>
-        </li>
-    `;
-    logContainer.insertAdjacentHTML("beforeend", html);
-
-    // Attach delete event listener to the delete button
-    const deleteButton = logContainer.querySelector(`[data-id="${log.id}"] .log-delete`);
-    deleteButton.addEventListener("click", () => deleteLog(log.id));  // Call deleteLog with log.id
-}
+// Helper function to reset the form after use
+function closeForm() {
+    const titleInput = document.querySelector("#title");
+    const descriptionInput = document.querySelector("#description");
+    const habitIdInput = document.querySelector("#habit-id");
+    const formActionButton = document.querySelector("#form-action-btn");
+    titleInput.value = "";
+    descriptionInput.value = "";
+    habitIdInput.value = "";
+    formActionButton.textContent = "Add";
+  }
 
 // Function to check storage usage and show warnings if usage exceeds 80%
 async function checkStorageUsage() {
@@ -564,3 +463,68 @@ async function requestPersistentStorage() {
         }
     }
 }
+
+// Function to request notification permission and retrieve FCM token
+async function initNotificationPermission() {
+    try{
+        const permission = await Notification.requestPermission();
+        if(permission === "granted"){
+            if(!serviceWorkerRegistration) {
+                // Wait until service worker is ready
+                serviceWorkerRegistration = await navigator.serviceWorker.ready;
+            }
+            const token = await getToken(messaging, {
+                vapidKey:
+                    "BPG6p5LElXTbQ8p5hFEKhKdYoq5pgFzdJcggAJe7RpLYaPlxAnt-WRobfargF2YJc4h-k99wGmLE_OuPb-7UVFc",
+                    serviceWorkerRegistration: serviceWorkerRegistration,
+            });
+            console.log("FCM Token: ", token);
+
+            if (token && currentUser) {
+                // Ensure we have a valid currentUser and token before saving
+                const userRef = doc(db, "users", currentUser.uid);
+                const tokenRef = collection(userRef, "fcmTokens");
+
+                // Try saving the token in Firestore
+                await addDoc(tokenRef, { token: token});
+                console.log("Token saved to Firestore successfully");
+            } else {
+                console.log("No valid user or token found.");
+            }
+        } else {
+            console.log("Notification permission denied"); 
+        }
+    } catch(error){
+        console.error("Error requesting notification permission: ", error);
+    }
+}
+
+// Initialize and handle foreground messages
+onMessage(messaging, (payload)=> {
+    console.log("Message received ", payload);
+    const notificationTitle = payload.notification.title;
+    const notificationOptions = {
+        body: payload.notification.body,
+        icon: "/img/icons/OnSyncIcon-192x192.png",
+    };
+    new Notification(notificationTitle, notificationOptions);
+});
+window.initNotificationPermission = initNotificationPermission;
+
+setInterval(async () => {
+    const now = new Date();
+    const habits = await getHabitsFromFirebase(); // Fetch all habits from Firestore
+    habits.forEach((habit)=> {
+        const reminderDate = new Date(habit.reminderDate);
+        if (reminderDate <= now && !habits.notified) {
+            // Show local notification
+            new Notification("Reminder", {
+                body: `Reminder for: ${habit.title}`,
+                icon: "/img/icons/OnSyncIcon-192x192.png",
+            });
+            // Update habit to mark as notified
+            habit.notified = true;
+            updateHabitInFirebase(habit.id, { notified: true });
+        }
+    });
+}, 60 * 60 * 1000); // Check every hour

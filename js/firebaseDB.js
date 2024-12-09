@@ -55,6 +55,7 @@ export async function getHabitsFromFirebase() {
 
 // Delete habits
 export async function deleteHabitFromFirebase(id){
+    console.log("Attempting to delete habit from firebase")
     try {
         if (!currentUser){
             throw new Error("User is not authenticated");
@@ -76,49 +77,5 @@ export async function updateHabitInFirebase(id, updatedHabit) {
         await updateDoc(habitRef, updatedHabit);
     } catch (error) {
         console.error("error updating habit: ", error);
-    }
-}
-
-
-// Add a log
-export async function addLogToFirebase(log) {
-    try {
-        const docRef = await addDoc(collection(db, "logs"), log);
-        return {id: docRef.id, ...log};
-    } catch(error) {
-        console.error("error adding log: ", error);
-    }
-}
-
-// Get logs
-export async function getLogsFromFirebase() {
-    const logs = [];
-    try {
-        const querySnapshot = await getDocs(collection(db, "logs"));
-        querySnapshot.forEach((doc) => {
-            logs.push({id: doc.id, ...doc.data()});
-        });
-    } catch(error){
-        console.error("error retrieving logs: ", error);
-    }
-    return logs;
-}
-
-// Delete logs
-export async function deleteLogFromFirebase(id){
-    try {
-        await deleteDoc(doc(db, "logs", id));
-    } catch (error) {
-        console.error("error deleting log: ", error);
-    }
-}
-
-// Update Logs
-export async function updateLogInFirebase(id, updatedLog) {
-    try {
-        const logRef = doc(db, "logs", id);
-        await updateDoc(logRef, updatedLog);
-    } catch (error) {
-        console.error("error updating Log: ", error);
     }
 }

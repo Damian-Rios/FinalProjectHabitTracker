@@ -24,28 +24,17 @@
                     <i class="material-icons">menu</i>
                 </a>
                 <ul class="right hide-on-med-and-down">
-                    <li><a href="/pages/tracker.html" class="waves-effect waves-light"><i class="material-icons">today</i></a></li>
-                    <li><a href="#" class="dropdown-trigger waves-effect waves-light" data-target="notificationsDropdown">
-                        <i class="material-icons">notifications</i>
-                        <span class="badge new white-text">3</span> 
-                    </a></li>
-                    <li><a href="/pages/settings.html" class="waves-effect waves-light"><i class="material-icons">settings</i></a></li>
+                    <li><a href="#" class="waves-effect waves-light" onclick="initNotificationPermission()">
+                            <i class="material-icons">notifications</i>
+                        </a>
+                    </li>
                     <li>
-                        <a id="logout-btn" class="waves-effect waves-light" style="display: none">
+                        <a href="#" id="logout-btn" class="waves-effect waves-light" style="display: none">
                             Logout
                         </a>
                     </li>
                 </ul>
             </div>
-
-            <!-- Notifications dropdown menu -->
-            <ul id="notificationsDropdown" class="dropdown-content">
-                <li><a href="#!">New 'Meditation' Habit added</a></li>
-                <li><a href="#!">Reminder: Drink Water</a></li>
-                <li><a href="#!">You've reached a daily habit streak!</a></li>
-                <li class="divider"></li>
-                <li><a href="#!">Clear notifications</a></li>
-            </ul>
         </nav>
     </header>
     
@@ -53,28 +42,12 @@
         <!-- Sidebar menu for mobile devices -->
         <ul class="sidenav" id="mobile-menu">
             <li><a href="/index.html">Home</a></li>
-            <li><a href="/pages/tracker.html">Tracker</a></li>
+            <li><a href="#" onclick="initNotificationPermission()" >Notifications</a></li>
             <li>
-                <a href="#" class="dropdown-trigger" data-target="mobileNotificationsDropdown">
-                    <i class="material-icons">notifications</i>
-                    <span class="badge new white-text">3</span>
-                </a>
-            </li>
-            <li><a href="/pages/settings.html">Settings</a></li>
-            <li>
-                <a id="logout-btn" class="waves-effect waves-light" style="display: none">
+                <a href="#" id="logout-btn" style="display: none">
                     Logout
                 </a>
             </li>
-        </ul>
-
-        <!-- Mobile notifications dropdown -->
-        <ul id="mobileNotificationsDropdown" class="dropdown-content">
-            <li><a href="#!">New 'Meditation' Habit added</a></li>
-            <li><a href="#!">Reminder: Drink Water</a></li>
-            <li><a href="#!">You've reached a daily habit streak!</a></li>
-            <li class="divider"></li>
-            <li><a href="#!">Clear notifications</a></li>
         </ul>
     </aside>
 
@@ -100,18 +73,29 @@
         <!-- Add Habit Modal -->
         <div id="habitModal" class="modal">
             <div class="modal-content">
-                <h4>Add a Custom Habit</h4>
-                <form id="customHabitForm">
+                <h4>Add a Habit</h4>
+                <form id="HabitForm">
                     <div class="input-field">
-                        <label for="custom_habit">Custom Habit Name</label>
-                        <input id="custom_habit" type="text" class="validate" required>
+                        <label for="title">Custom Habit Name</label>
+                        <input id="title" type="text" class="validate" required>
                     </div>
                     <div class="input-field">
-                        <label for="custom_description">Description</label>
-                        <input id="custom_description" type="text" class="validate" required>
+                        <label for="description">Description</label>
+                        <input id="description" type="text" class="validate" required>
                     </div>
+                    <!-- 
+                    <div class="input-field col s12">
+                        <label for="reminder-date" class="black-text">Reminder Date</label>
+                        <input id="reminder-date" type="date" class="validate" />
+                    </div>
+                    <div class="input-field col s12">
+                        <label for="reminder-time" class="black-text">Reminder Time</label>
+                        <input id="reminder-time" type="time" class="validate" />
+                    </div>
+                    -->
+                    <input type="hidden" id="habit-id">
                     <div class="input-field">
-                        <button class="modal-close btn waves-effect waves-light" type="button">Add Custom Habit</button>
+                        <button id="form-action-btn" class="modal-close btn waves-effect waves-light" type="button">Add Habit</button>
                     </div>
                 </form>
             </div>
@@ -121,9 +105,9 @@
         </div>
     </main> 
 
+    <script type="module" src="/js/auth.js"></script>
     <script src="/js/materialize.min.js"></script>
     <script type="module" src="/js/ui.js"></script>
     <script type="module" src="/js/firebaseDB.js"></script>
-    <script type="module" src="/js/auth.js"></script>
 </body>
 </html>
